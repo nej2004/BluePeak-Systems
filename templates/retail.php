@@ -476,6 +476,28 @@ $maxTopRevenue = 0;
 foreach ($topSellingByRevenue as $item) {
     $maxTopRevenue = max($maxTopRevenue, floatval($item['total_revenue'] ?? 0));
 }
+
+$topQuantityProduct = $topSellingByQty[0] ?? null;
+$topRevenueProduct = $topSellingByRevenue[0] ?? null;
+$summaryInsights = [];
+if ($topQuantityProduct || $topRevenueProduct) {
+    $topQtyName = !empty($topQuantityProduct['product_name']) ? $topQuantityProduct['product_name'] : 'your fastest-selling item';
+    $topQtySku = !empty($topQuantityProduct['product_sku']) ? $topQuantityProduct['product_sku'] : '';
+    $topRevenueName = !empty($topRevenueProduct['product_name']) ? $topRevenueProduct['product_name'] : 'your highest-value item';
+    $topRevenueSku = !empty($topRevenueProduct['product_sku']) ? $topRevenueProduct['product_sku'] : '';
+
+    $summaryInsights = [
+        'Protect stock availability for ' . $topQtyName . ($topQtySku !== '' ? ' (' . $topQtySku . ')' : '') . ' because it is your strongest volume driver and can lose sales quickly if inventory runs tight.',
+        'Use ' . $topRevenueName . ($topRevenueSku !== '' ? ' (' . $topRevenueSku . ')' : '') . ' as a priority item for promotions, bundles, and visibility since it is generating the highest revenue.',
+        'Plan replenishment around the products leading both quantity and revenue so the business stays ready for peak selling periods and avoids stockouts on proven sellers.'
+    ];
+} else {
+    $summaryInsights = [
+        'Retail sales data is not available yet, so use this section to identify fast-moving products once bills start generating.',
+        'After enough sales history builds up, this summary will highlight the items that deserve higher stock priority and stronger promotions.',
+        'Monitor the chart trends regularly so you can align purchasing, stock levels, and promotions with actual customer demand.'
+    ];
+}
 ?>
 <?php if (isset($_GET['cleared'])): ?>
 <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -563,6 +585,90 @@ foreach ($topSellingByRevenue as $item) {
 
     .chart-fill.revenue {
         background: linear-gradient(90deg, #22c55e, #0ea5e9);
+    }
+
+    [data-bs-theme="dark"] .clear-date-form {
+        background: #0f172a;
+        border-color: #243244;
+    }
+
+    [data-bs-theme="dark"] #topSellingSummaryCard .card-header.bg-light {
+        background: linear-gradient(180deg, #111827 0%, #0f172a 100%) !important;
+        color: #e5eefb;
+        border-bottom: 1px solid #243244;
+    }
+
+    [data-bs-theme="dark"] #topSellingSummaryCard .text-muted,
+    [data-bs-theme="dark"] .insight-item-title {
+        color: #cbd5e1;
+    }
+
+    [data-bs-theme="dark"] #topSellingSummaryCard .chart-track {
+        background: #1f2937;
+    }
+
+    [data-bs-theme="dark"] #topSellingSummaryCard .chart-fill.qty {
+        background: linear-gradient(90deg, #22c55e, #16a34a);
+    }
+
+    [data-bs-theme="dark"] #topSellingSummaryCard .chart-fill.revenue {
+        background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+    }
+
+    .summary-recommendation {
+        background: #eef4ff;
+        border: 1px solid #dbe7ff;
+        color: #1f2937;
+    }
+
+    .summary-insights {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .summary-insights li {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 10px 0;
+        border-top: 1px solid #dbe7ff;
+        color: #1f2937;
+        line-height: 1.5;
+    }
+
+    .summary-insights li:first-child {
+        border-top: 0;
+        padding-top: 0;
+    }
+
+    .summary-insights-icon {
+        flex: 0 0 auto;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #dbeafe;
+        color: #1d4ed8;
+        margin-top: 1px;
+    }
+
+    [data-bs-theme="dark"] .summary-recommendation {
+        background: rgba(79, 70, 229, 0.12);
+        border-color: rgba(99, 102, 241, 0.24);
+        color: #dbeafe;
+    }
+
+    [data-bs-theme="dark"] .summary-insights li {
+        color: #dbeafe;
+        border-top-color: #243244;
+    }
+
+    [data-bs-theme="dark"] .summary-insights-icon {
+        background: rgba(59, 130, 246, 0.18);
+        color: #bfdbfe;
     }
 </style>
 
@@ -736,6 +842,21 @@ foreach ($topSellingByRevenue as $item) {
                         <div class="text-muted">No retail sales data available.</div>
                     <?php endif; ?>
                 </div>
+            </div>
+            <div class="mt-4 summary-recommendation rounded-3 p-3">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-briefcase-fill text-warning"></i>
+                    <div class="fw-semibold">Business Insight</div>
+                </div>
+                <div class="small text-muted mb-2">Based on <?= $period === 'today' ? 'today\'s' : ($period === 'month' ? 'this month\'s' : 'current') ?> retail sales performance.</div>
+                <ul class="summary-insights mb-0">
+                    <?php foreach ($summaryInsights as $summaryInsight): ?>
+                    <li>
+                        <span class="summary-insights-icon"><i class="bi bi-arrow-up-right"></i></span>
+                        <span><?= htmlspecialchars($summaryInsight) ?></span>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
             </div>
         </div>
     </div>

@@ -1844,6 +1844,34 @@ if ($editEmployeeId) {
     margin: 0;
 }
 
+[data-bs-theme="dark"] .employee-actions-sticky {
+    background: #0f172a;
+    border-bottom-color: #243244;
+}
+
+[data-bs-theme="dark"] .employee-toolbar-title {
+    color: #e5eefb;
+}
+
+[data-bs-theme="dark"] .employee-toolbar-actions .btn-outline-secondary {
+    color: #d1d5db;
+    border-color: #475569;
+}
+
+[data-bs-theme="dark"] .employee-toolbar-actions .btn-secondary {
+    background: #334155;
+    border-color: #475569;
+    color: #fff;
+}
+
+[data-bs-theme="dark"] .employee-toolbar-actions .btn-warning {
+    color: #111827;
+}
+
+[data-bs-theme="dark"] .employee-toolbar-actions .btn-info {
+    color: #ecfeff;
+}
+
 @media (max-width: 992px) {
     .employee-toolbar {
         gap: 0.5rem;

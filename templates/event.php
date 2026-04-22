@@ -288,7 +288,7 @@ if ($action === 'download') {
         ];
     }
 
-    $rowsPerPage = 27;
+    $rowsPerPage = 18;
     $rowPages = array_chunk($rows, $rowsPerPage);
 
     $objects = [];
@@ -305,18 +305,19 @@ if ($action === 'download') {
         $rowPages = [[]];
     }
 
-    $pageWidth = 595;
-    $margin = 30;
+    $pageWidth = 842;
+    $pageHeight = 595;
+    $margin = 28;
     $tableWidth = $pageWidth - ($margin * 2);
     $columns = [
-        ['key' => 'bill_no', 'label' => 'Bill No', 'width' => 55, 'align' => 'L'],
-        ['key' => 'event_date', 'label' => 'Event Date', 'width' => 70, 'align' => 'L'],
-        ['key' => 'customer_name', 'label' => 'Customer Name', 'width' => 105, 'align' => 'L'],
-        ['key' => 'customer_phone', 'label' => 'Phone', 'width' => 80, 'align' => 'L'],
-        ['key' => 'total', 'label' => 'Total', 'width' => 65, 'align' => 'R'],
-        ['key' => 'advance', 'label' => 'Advance', 'width' => 65, 'align' => 'R'],
-        ['key' => 'balance', 'label' => 'Balance', 'width' => 65, 'align' => 'R'],
-        ['key' => 'status', 'label' => 'Status', 'width' => 30, 'align' => 'L'],
+        ['key' => 'bill_no', 'label' => 'Bill No', 'width' => 75, 'align' => 'L'],
+        ['key' => 'event_date', 'label' => 'Event Date', 'width' => 95, 'align' => 'L'],
+        ['key' => 'customer_name', 'label' => 'Customer Name', 'width' => 165, 'align' => 'L'],
+        ['key' => 'customer_phone', 'label' => 'Phone', 'width' => 110, 'align' => 'L'],
+        ['key' => 'total', 'label' => 'Total', 'width' => 95, 'align' => 'R'],
+        ['key' => 'advance', 'label' => 'Advance', 'width' => 95, 'align' => 'R'],
+        ['key' => 'balance', 'label' => 'Balance', 'width' => 95, 'align' => 'R'],
+        ['key' => 'status', 'label' => 'Status', 'width' => 56, 'align' => 'L'],
     ];
 
     $drawText = function ($x, $y, $text, $fontSize, $bold, $tableMode = false) use ($pdfEscape) {
@@ -349,12 +350,13 @@ if ($action === 'download') {
         $content = "";
 
         // Title banner
-        $content .= "q\n0.13 0.35 0.75 rg\n{$margin} 785 {$tableWidth} 34 re f\nQ\n";
-        $content .= $drawText($margin + 10, 798, 'Event Billing Report', 14, true);
+        $bannerY = $pageHeight - 62;
+        $content .= "q\n0.11 0.32 0.72 rg\n{$margin} {$bannerY} {$tableWidth} 38 re f\nQ\n";
+        $content .= $drawText($margin + 14, $bannerY + 14, 'Event Billing Report', 16, true);
 
         // Summary section (fixed grid for clean alignment)
-        $summaryTop = 776;
-        $summaryRowHeight = 16;
+        $summaryTop = $bannerY - 10;
+        $summaryRowHeight = 18;
         $summaryColWidth = $tableWidth / 3;
         $summaryRows = [
             [
@@ -374,48 +376,48 @@ if ($action === 'download') {
             foreach ($summaryRow as $colIndex => $cellText) {
                 $cellX = $margin + ($colIndex * $summaryColWidth);
                 if ($rowIndex === 0) {
-                    $content .= "q\n0.97 0.98 1 rg\n{$cellX} " . ($cellY - $summaryRowHeight) . " {$summaryColWidth} {$summaryRowHeight} re f\nQ\n";
+                    $content .= "q\n0.94 0.96 1 rg\n{$cellX} " . ($cellY - $summaryRowHeight) . " {$summaryColWidth} {$summaryRowHeight} re f\nQ\n";
                 }
-                $content .= "q\n0.85 0.88 0.94 RG\n0.5 w\n{$cellX} " . ($cellY - $summaryRowHeight) . " {$summaryColWidth} {$summaryRowHeight} re S\nQ\n";
-                $content .= $drawText($cellX + 6, $cellY - 11, $cellText, 8.5, false);
+                $content .= "q\n0.80 0.84 0.90 RG\n0.7 w\n{$cellX} " . ($cellY - $summaryRowHeight) . " {$summaryColWidth} {$summaryRowHeight} re S\nQ\n";
+                $content .= $drawText($cellX + 7, $cellY - 13, $cellText, 9, false);
             }
         }
 
         // Header row
-        $tableTop = 730;
-        $headerHeight = 20;
-        $rowHeight = 18;
-        $content .= "q\n0.90 0.93 0.98 rg\n{$margin} " . ($tableTop - $headerHeight) . " {$tableWidth} {$headerHeight} re f\nQ\n";
-        $content .= "q\n0.75 0.80 0.90 RG\n0.8 w\n{$margin} " . ($tableTop - $headerHeight) . " {$tableWidth} {$headerHeight} re S\nQ\n";
+        $tableTop = $summaryTop - ($summaryRowHeight * 2) - 20;
+        $headerHeight = 24;
+        $rowHeight = 20;
+        $content .= "q\n0.88 0.92 0.98 rg\n{$margin} " . ($tableTop - $headerHeight) . " {$tableWidth} {$headerHeight} re f\nQ\n";
+        $content .= "q\n0.72 0.79 0.90 RG\n0.9 w\n{$margin} " . ($tableTop - $headerHeight) . " {$tableWidth} {$headerHeight} re S\nQ\n";
 
         $x = $margin;
         foreach ($columns as $col) {
-            $content .= $drawText($x + 4, $tableTop - 14, $col['label'], 9, true, true);
+            $content .= $drawText($x + 6, $tableTop - 16, $col['label'], 9, true, true);
             $x += $col['width'];
-            $content .= "q\n0.85 0.88 0.94 RG\n0.5 w\n{$x} " . ($tableTop - $headerHeight) . " m {$x} " . ($tableTop - $headerHeight - ($rowHeight * max(1, count($rowPage)))) . " l S\nQ\n";
+            $content .= "q\n0.84 0.88 0.94 RG\n0.6 w\n{$x} " . ($tableTop - $headerHeight) . " m {$x} " . ($tableTop - $headerHeight - ($rowHeight * max(1, count($rowPage)))) . " l S\nQ\n";
         }
 
         // Data rows
         $currentY = $tableTop - $headerHeight;
         if (empty($rowPage)) {
             $content .= "q\n0.92 0.92 0.92 RG\n0.5 w\n{$margin} " . ($currentY - $rowHeight) . " {$tableWidth} {$rowHeight} re S\nQ\n";
-            $content .= $drawText($margin + 8, $currentY - 13, 'No records found for selected filters.', 9, false, true);
+            $content .= $drawText($margin + 10, $currentY - 14, 'No records found for selected filters.', 9, false, true);
             $currentY -= $rowHeight;
         } else {
             foreach ($rowPage as $i => $row) {
                 if ($i % 2 === 0) {
-                    $content .= "q\n0.98 0.99 1 rg\n{$margin} " . ($currentY - $rowHeight) . " {$tableWidth} {$rowHeight} re f\nQ\n";
+                    $content .= "q\n0.97 0.98 1 rg\n{$margin} " . ($currentY - $rowHeight) . " {$tableWidth} {$rowHeight} re f\nQ\n";
                 }
 
-                $content .= "q\n0.92 0.92 0.92 RG\n0.5 w\n{$margin} " . ($currentY - $rowHeight) . " {$tableWidth} {$rowHeight} re S\nQ\n";
+                $content .= "q\n0.90 0.90 0.92 RG\n0.6 w\n{$margin} " . ($currentY - $rowHeight) . " {$tableWidth} {$rowHeight} re S\nQ\n";
 
                 $x = $margin;
                 foreach ($columns as $col) {
                     $value = $row[$col['key']] ?? '';
                     if ($col['align'] === 'R') {
-                        $content .= $drawRightText($x + $col['width'] - 6, $currentY - 12, $value, 9, false, true);
+                        $content .= $drawRightText($x + $col['width'] - 9, $currentY - 14, $value, 9, false, true);
                     } else {
-                        $content .= $drawText($x + 4, $currentY - 12, $value, 9, false, true);
+                        $content .= $drawText($x + 7, $currentY - 14, $value, 9, false, true);
                     }
                     $x += $col['width'];
                 }
@@ -425,7 +427,7 @@ if ($action === 'download') {
         }
 
         $objects[$contentObj] = "<< /Length " . strlen($content) . " >>\nstream\n" . $content . "\nendstream";
-        $objects[$pageObj] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F5 5 0 R /F6 6 0 R >> >> /Contents ' . $contentObj . ' 0 R >>';
+        $objects[$pageObj] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' . $pageWidth . ' ' . $pageHeight . '] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F5 5 0 R /F6 6 0 R >> >> /Contents ' . $contentObj . ' 0 R >>';
     }
 
     $objects[2] = '<< /Type /Pages /Kids [' . implode(' ', $pageRefs) . '] /Count ' . count($pageRefs) . ' >>';
@@ -764,6 +766,50 @@ foreach ($calendarSourceBills as $bill) {
 
 $eventCalendarEventsByDateJson = json_encode($eventCalendarEventsByDate, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
 $eventCalendarEventIdByDateJson = json_encode($eventCalendarEventIdByDate, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
+
+$nextEvent = null;
+$todayDateObj = new DateTime('today');
+foreach ($calendarSourceBills as $bill) {
+    $eventDate = trim((string)($bill['event_date'] ?? ''));
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $eventDate)) {
+        continue;
+    }
+
+    $eventDateObj = DateTime::createFromFormat('Y-m-d', $eventDate);
+    if (!$eventDateObj || $eventDateObj->format('Y-m-d') !== $eventDate || $eventDateObj <= $todayDateObj) {
+        continue;
+    }
+
+    $candidate = [
+        'id' => intval($bill['id'] ?? 0),
+        'bill_number' => $formatEventBillNo($bill['bill_number'] ?? ''),
+        'customer_name' => trim((string)($bill['customer_name'] ?? '')),
+        'customer_phone' => trim((string)($bill['customer_phone'] ?? '')),
+        'event_date' => $eventDate,
+        'total_amount' => floatval($bill['total_amount'] ?? 0),
+        'paid_amount' => floatval($bill['paid_amount'] ?? 0),
+        'balance_amount' => max(0, floatval($bill['total_amount'] ?? 0) - floatval($bill['paid_amount'] ?? 0)),
+        'status' => $bill['payment_status'] ?? 'pending',
+        'notes' => (string)($bill['notes'] ?? ''),
+    ];
+
+    if ($nextEvent === null || $eventDateObj < DateTime::createFromFormat('Y-m-d', $nextEvent['event_date'])) {
+        $nextEvent = $candidate;
+    }
+}
+
+if ($nextEvent !== null) {
+    $nextEventDateObj = DateTime::createFromFormat('Y-m-d', $nextEvent['event_date']);
+    $nextEvent['days_left'] = $nextEventDateObj ? $todayDateObj->diff($nextEventDateObj)->days : 0;
+    $nextEvent['customer_name'] = $nextEvent['customer_name'] !== '' ? $nextEvent['customer_name'] : 'Guest';
+    $nextEvent['customer_phone'] = $nextEvent['customer_phone'] !== '' ? $nextEvent['customer_phone'] : '-';
+    $nextEvent['summary_address'] = $extractEventAddressFromNotes($nextEvent['notes']);
+    $nextEvent['summary_address'] = $nextEvent['summary_address'] !== '' ? $nextEvent['summary_address'] : 'No address recorded';
+    $nextEvent['summary_notes'] = trim(preg_replace('/\b(?:Event Date|Customer Name|Customer Phone|Event Address):\s*[^|]+/i', '', $nextEvent['notes']));
+    $nextEvent['summary_notes'] = $nextEvent['summary_notes'] !== '' ? $nextEvent['summary_notes'] : 'No additional notes';
+}
+
+$nextEventJson = json_encode($nextEvent, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
 ?>
 <?php if (isset($_GET['cleared'])): ?>
 <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -938,9 +984,143 @@ $eventCalendarEventIdByDateJson = json_encode($eventCalendarEventIdByDate, JSON_
     }
     .event-calendar-section {
         width: 100%;
-        max-width: 470px;
-        margin-left: auto;
     }
+    .event-sidebar-card {
+        border: 1px solid #dfe7f5;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+        box-shadow: 0 10px 24px rgba(15, 59, 117, 0.08);
+        height: 100%;
+    }
+    .event-sidebar-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #d7e5ff;
+        color: #0f3b75;
+        font-weight: 700;
+        font-size: 0.78rem;
+    }
+    .event-countdown-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f3b75;
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+    }
+    .event-countdown-label {
+        font-size: 0.8rem;
+        color: #667085;
+    }
+    .next-event-countdown-box {
+        background: #eef4ff;
+    }
+    .event-summary-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .event-summary-list li {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 0;
+        border-bottom: 1px dashed #e4e8f1;
+        font-size: 0.9rem;
+    }
+    .event-summary-list li:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+    }
+    .event-summary-label {
+        color: #667085;
+        flex: 0 0 auto;
+    }
+    .event-summary-value {
+        color: #1f2937;
+        font-weight: 600;
+        text-align: right;
+        word-break: break-word;
+    }
+
+    [data-bs-theme="dark"] .clear-date-form {
+        background: #0f172a;
+        border-color: #243244;
+    }
+
+    [data-bs-theme="dark"] .event-calendar-card,
+    [data-bs-theme="dark"] .event-sidebar-card {
+        background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+        border-color: #243244;
+        box-shadow: 0 16px 32px rgba(0,0,0,0.22);
+    }
+
+    [data-bs-theme="dark"] .event-calendar-head {
+        background: linear-gradient(90deg, #123e7a 0%, #1e3a8a 100%);
+    }
+
+    [data-bs-theme="dark"] .event-calendar-weekday,
+    [data-bs-theme="dark"] .event-calendar-day-num,
+    [data-bs-theme="dark"] .event-calendar-meta,
+    [data-bs-theme="dark"] .event-sidebar-card .text-muted,
+    [data-bs-theme="dark"] .event-summary-label,
+    [data-bs-theme="dark"] .event-countdown-label,
+    [data-bs-theme="dark"] .event-summary-value {
+        color: #cbd5e1;
+    }
+
+    [data-bs-theme="dark"] .event-calendar-day,
+    [data-bs-theme="dark"] .event-calendar-empty {
+        background: #0f172a;
+        border-color: #243244;
+    }
+
+    [data-bs-theme="dark"] .event-calendar-empty {
+        background: #111827;
+    }
+
+    [data-bs-theme="dark"] .event-calendar-day.has-event {
+        background: #1d4ed8;
+        border-color: #1d4ed8;
+    }
+
+    [data-bs-theme="dark"] .event-calendar-day-count {
+        background: rgba(255,255,255,0.14);
+        color: #fff;
+    }
+
+    [data-bs-theme="dark"] .event-calendar-day.has-event .event-calendar-event-dot {
+        background: #ffffff;
+    }
+
+    [data-bs-theme="dark"] .event-calendar-day.event-clickable:hover {
+        box-shadow: 0 2px 12px rgba(59, 130, 246, 0.25);
+    }
+
+    [data-bs-theme="dark"] .event-sidebar-badge {
+        background: rgba(59,130,246,0.16);
+        color: #bfdbfe;
+    }
+
+    [data-bs-theme="dark"] .next-event-countdown-box {
+        background: linear-gradient(180deg, #172033 0%, #111827 100%);
+        border: 1px solid #243244;
+    }
+
+    [data-bs-theme="dark"] .event-countdown-value {
+        color: #dbeafe;
+    }
+
+    [data-bs-theme="dark"] .event-countdown-label {
+        color: #94a3b8;
+    }
+
+    [data-bs-theme="dark"] .event-summary-list li {
+        border-bottom-color: #243244;
+    }
+
     @media (max-width: 768px) {
         .bill-toolbar-right {
             width: 100%;
@@ -1080,16 +1260,54 @@ $eventCalendarEventIdByDateJson = json_encode($eventCalendarEventIdByDate, JSON_
         <small class="text-muted">Monthly view with event dates</small>
     </div>
 
-    <div class="event-calendar-wrap">
-        <div class="event-calendar-card p-3" id="eventCalendarWidget">
-            <div class="event-calendar-head">
-                <button type="button" class="event-calendar-nav-btn" data-calendar-nav="prev" aria-label="Previous month"><i class="bi bi-caret-left-fill"></i></button>
-                <span class="event-calendar-title" id="eventCalendarTitle"></span>
-                <button type="button" class="event-calendar-nav-btn" data-calendar-nav="next" aria-label="Next month"><i class="bi bi-caret-right-fill"></i></button>
-            </div>
+    <div class="row g-3 align-items-stretch">
+        <div class="col-lg-5">
+            <div class="event-sidebar-card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <div class="event-sidebar-badge mb-2"><i class="bi bi-clock-history"></i>Next Event</div>
+                        <h5 class="mb-1" id="nextEventTitle"><?= $nextEvent ? htmlspecialchars($nextEvent['bill_number']) : 'No upcoming event' ?></h5>
+                        <small class="text-muted" id="nextEventSubtitle"><?= $nextEvent ? htmlspecialchars($nextEvent['event_date']) : 'No future event bills found' ?></small>
+                    </div>
+                </div>
 
-            <div class="event-calendar-grid" id="eventCalendarGrid"></div>
-            <div class="event-calendar-meta" id="eventCalendarMeta">0 event(s) in this month</div>
+                <div class="next-event-countdown-box text-center py-3 mb-3 rounded-3">
+                    <div class="event-countdown-value" id="nextEventCountdown">--</div>
+                    <div class="event-countdown-label">until the next event</div>
+                </div>
+
+                <?php if ($nextEvent): ?>
+                <ul class="event-summary-list">
+                    <li><span class="event-summary-label">Customer</span><span class="event-summary-value"><?= htmlspecialchars($nextEvent['customer_name']) ?></span></li>
+                    <li><span class="event-summary-label">Phone</span><span class="event-summary-value"><?= htmlspecialchars($nextEvent['customer_phone']) ?></span></li>
+                    <li><span class="event-summary-label">Event Date</span><span class="event-summary-value"><?= htmlspecialchars($nextEvent['event_date']) ?></span></li>
+                    <li><span class="event-summary-label">Address</span><span class="event-summary-value"><?= htmlspecialchars($nextEvent['summary_address']) ?></span></li>
+                    <li><span class="event-summary-label">Total</span><span class="event-summary-value"><?= $currency ?> <?= number_format($nextEvent['total_amount'], 2) ?></span></li>
+                    <li><span class="event-summary-label">Paid</span><span class="event-summary-value text-success"><?= $currency ?> <?= number_format($nextEvent['paid_amount'], 2) ?></span></li>
+                    <li><span class="event-summary-label">Balance</span><span class="event-summary-value <?= $nextEvent['balance_amount'] > 0 ? 'text-danger' : 'text-success' ?>"><?= $currency ?> <?= number_format($nextEvent['balance_amount'], 2) ?></span></li>
+                </ul>
+                <div class="mt-3 small text-muted" id="nextEventNotes"><?= htmlspecialchars($nextEvent['summary_notes']) ?></div>
+                <?php else: ?>
+                <div class="alert alert-light border mb-0">
+                    There is no upcoming event bill with a future event date.
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="event-calendar-wrap">
+                <div class="event-calendar-card p-3" id="eventCalendarWidget">
+                    <div class="event-calendar-head">
+                        <button type="button" class="event-calendar-nav-btn" data-calendar-nav="prev" aria-label="Previous month"><i class="bi bi-caret-left-fill"></i></button>
+                        <span class="event-calendar-title" id="eventCalendarTitle"></span>
+                        <button type="button" class="event-calendar-nav-btn" data-calendar-nav="next" aria-label="Next month"><i class="bi bi-caret-right-fill"></i></button>
+                    </div>
+
+                    <div class="event-calendar-grid" id="eventCalendarGrid"></div>
+                    <div class="event-calendar-meta" id="eventCalendarMeta">0 event(s) in this month</div>
+                </div>
+            </div>
         </div>
     </div>
     <script>
@@ -1104,6 +1322,9 @@ $eventCalendarEventIdByDateJson = json_encode($eventCalendarEventIdByDate, JSON_
                     var meta = document.getElementById('eventCalendarMeta');
                     var eventsByDate = <?= $eventCalendarEventsByDateJson ?: '{}' ?>;
                     var eventIdByDate = <?= $eventCalendarEventIdByDateJson ?: '{}' ?>;
+                    var nextEvent = <?= $nextEventJson ?: 'null' ?>;
+                    var countdownElement = document.getElementById('nextEventCountdown');
+                    var subtitleElement = document.getElementById('nextEventSubtitle');
                     var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
                     var activeDate = new Date();
@@ -1111,6 +1332,45 @@ $eventCalendarEventIdByDateJson = json_encode($eventCalendarEventIdByDate, JSON_
 
                     var pad = function (value) {
                         return String(value).padStart(2, '0');
+                    };
+
+                    var renderCountdown = function () {
+                        if (!nextEvent || !countdownElement) {
+                            return;
+                        }
+
+                        var targetDate = new Date(nextEvent.event_date + 'T00:00:00');
+                        if (isNaN(targetDate.getTime())) {
+                            countdownElement.textContent = 'Unavailable';
+                            return;
+                        }
+
+                        var update = function () {
+                            var now = new Date();
+                            var diff = targetDate.getTime() - now.getTime();
+
+                            if (diff <= 0) {
+                                countdownElement.textContent = 'Today';
+                                if (subtitleElement) {
+                                    subtitleElement.textContent = nextEvent.event_date + ' • happening today';
+                                }
+                                return;
+                            }
+
+                            var totalSeconds = Math.floor(diff / 1000);
+                            var days = Math.floor(totalSeconds / 86400);
+                            var hours = Math.floor((totalSeconds % 86400) / 3600);
+                            var minutes = Math.floor((totalSeconds % 3600) / 60);
+                            var seconds = totalSeconds % 60;
+
+                            countdownElement.textContent = days + 'd ' + hours + 'h ' + minutes + 'm ' + seconds + 's';
+                            if (subtitleElement) {
+                                subtitleElement.textContent = nextEvent.event_date + ' • ' + days + ' day' + (days === 1 ? '' : 's') + ' remaining';
+                            }
+                        };
+
+                        update();
+                        setInterval(update, 1000);
                     };
 
                     var render = function () {
@@ -1183,6 +1443,7 @@ $eventCalendarEventIdByDateJson = json_encode($eventCalendarEventIdByDate, JSON_
                         render();
                     });
 
+                    renderCountdown();
                     render();
                 })();
     </script>

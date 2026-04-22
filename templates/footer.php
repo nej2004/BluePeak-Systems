@@ -169,6 +169,45 @@
 
     <script>
         (function () {
+            function applyTheme(theme) {
+                const normalizedTheme = theme === 'dark' ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-bs-theme', normalizedTheme);
+                localStorage.setItem('app-theme', normalizedTheme);
+
+                const themeLabel = document.getElementById('themeLabel');
+                const lightThemeBtn = document.getElementById('lightThemeBtn');
+                const darkThemeBtn = document.getElementById('darkThemeBtn');
+
+                if (themeLabel) {
+                    themeLabel.textContent = normalizedTheme === 'dark' ? 'Dark' : 'Light';
+                }
+
+                if (lightThemeBtn && darkThemeBtn) {
+                    lightThemeBtn.classList.toggle('btn-primary', normalizedTheme === 'light');
+                    lightThemeBtn.classList.toggle('btn-outline-primary', normalizedTheme !== 'light');
+                    darkThemeBtn.classList.toggle('btn-primary', normalizedTheme === 'dark');
+                    darkThemeBtn.classList.toggle('btn-outline-primary', normalizedTheme !== 'dark');
+                }
+            }
+
+            function initThemeSwitcher() {
+                const lightThemeBtn = document.getElementById('lightThemeBtn');
+                const darkThemeBtn = document.getElementById('darkThemeBtn');
+                if (!lightThemeBtn || !darkThemeBtn) {
+                    return;
+                }
+
+                applyTheme(document.documentElement.getAttribute('data-bs-theme') || 'light');
+
+                lightThemeBtn.addEventListener('click', function () {
+                    applyTheme('light');
+                });
+
+                darkThemeBtn.addEventListener('click', function () {
+                    applyTheme('dark');
+                });
+            }
+
             let pendingForm = null;
 
             function initConfirmForms() {
@@ -218,6 +257,7 @@
                 });
             }
 
+            document.addEventListener('DOMContentLoaded', initThemeSwitcher);
             document.addEventListener('DOMContentLoaded', initConfirmForms);
         })();
     </script>

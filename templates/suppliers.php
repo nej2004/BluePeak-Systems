@@ -883,6 +883,39 @@ if ($action === 'create' || $action === 'edit') {
             padding: 1rem;
         }
     }
+
+    [data-bs-theme="dark"] .supplier-detail-modal {
+        background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+        color: #e5eefb;
+        border: 1px solid #243244;
+        box-shadow: 0 18px 36px rgba(0,0,0,0.25);
+    }
+
+    [data-bs-theme="dark"] .supplier-detail-overlay {
+        background: rgba(2, 6, 23, 0.72);
+    }
+
+    [data-bs-theme="dark"] .card-header.bg-white,
+    [data-bs-theme="dark"] .card-header.bg-light {
+        background: linear-gradient(180deg, #111827 0%, #0f172a 100%) !important;
+        color: #e5eefb;
+        border-bottom: 1px solid #243244 !important;
+    }
+
+    [data-bs-theme="dark"] .supplier-detail-modal .text-muted {
+        color: #94a3b8 !important;
+    }
+
+    [data-bs-theme="dark"] .supplier-detail-modal .table-light {
+        background: #0f172a;
+        color: #e5eefb;
+    }
+
+    [data-bs-theme="dark"] .supplier-detail-modal .table > :not(caption) > * > * {
+        background-color: #111827;
+        color: #e5eefb;
+        border-color: #243244;
+    }
 </style>
     <?php
 } else {
