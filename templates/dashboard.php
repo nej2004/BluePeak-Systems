@@ -1,41 +1,61 @@
 ﻿<?php
 $currency = $settings['currency_symbol'] ?? 'LKR';
 
-// Get today's stats
-$today = date('Y-m-d');
-$todayBills = $pdo->query("SELECT 
-    SUM(CASE WHEN type = 'retail' THEN 1 ELSE 0 END) as retail_count,
-    SUM(CASE WHEN type IN ('wholesale', 'event') THEN 1 ELSE 0 END) as event_count,
-    COALESCE(SUM(CASE WHEN type = 'retail' THEN total_amount ELSE 0 END), 0) as retail_total,
-    COALESCE(SUM(CASE WHEN type IN ('wholesale', 'event') THEN total_amount ELSE 0 END), 0) as event_total,
-    SUM(CASE WHEN type IN ('retail', 'wholesale', 'event') THEN 1 ELSE 0 END) as count,
-    COALESCE(SUM(CASE WHEN type IN ('retail', 'wholesale', 'event') THEN total_amount ELSE 0 END), 0) as total
-    FROM bills 
-    WHERE DATE(created_at) = '$today'")->fetch();
-$monthBills = $pdo->query("SELECT 
-    SUM(CASE WHEN type = 'retail' THEN 1 ELSE 0 END) as retail_count,
-    SUM(CASE WHEN type IN ('wholesale', 'event') THEN 1 ELSE 0 END) as event_count,
-    COALESCE(SUM(CASE WHEN type = 'retail' THEN total_amount ELSE 0 END), 0) as retail_total,
-    COALESCE(SUM(CASE WHEN type IN ('wholesale', 'event') THEN total_amount ELSE 0 END), 0) as event_total,
-    SUM(CASE WHEN type IN ('retail', 'wholesale', 'event') THEN 1 ELSE 0 END) as count,
-    COALESCE(SUM(CASE WHEN type IN ('retail', 'wholesale', 'event') THEN total_amount ELSE 0 END), 0) as total
-    FROM bills 
-    WHERE MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())")->fetch();
-$totalProducts = $pdo->query("SELECT COUNT(*) FROM products WHERE is_active = 1")->fetchColumn();
-$lowStock = $pdo->query("SELECT COUNT(*) FROM products WHERE stock_quantity <= min_stock_level AND is_active = 1")->fetchColumn();
+$todayBills = ['retail_count' => 0, 'event_count' => 0, 'retail_total' => 0, 'event_total' => 0, 'count' => 0, 'total' => 0];
+$monthBills = ['retail_count' => 0, 'event_count' => 0, 'retail_total' => 0, 'event_total' => 0, 'count' => 0, 'total' => 0];
+$totalProducts = 0;
+$lowStock = 0;
+$recentBills = [];
+$lowStockItems = [];
 
-if (!is_array($todayBills)) {
-    $todayBills = ['count' => 0, 'total' => 0, 'retail_count' => 0, 'event_count' => 0, 'retail_total' => 0, 'event_total' => 0];
-}
-if (!is_array($monthBills)) {
-    $monthBills = ['count' => 0, 'total' => 0, 'retail_count' => 0, 'event_count' => 0, 'retail_total' => 0, 'event_total' => 0];
-}
-$totalProducts = (int) ($totalProducts ?: 0);
-$lowStock = (int) ($lowStock ?: 0);
+if ($pdo) {
+    try {
+        // Get today's stats
+        $today = date('Y-m-d');
+        $todayBillsStmt = $pdo->query("SELECT 
+            SUM(CASE WHEN type = 'retail' THEN 1 ELSE 0 END) as retail_count,
+            SUM(CASE WHEN type IN ('wholesale', 'event') THEN 1 ELSE 0 END) as event_count,
+            COALESCE(SUM(CASE WHEN type = 'retail' THEN total_amount ELSE 0 END), 0) as retail_total,
+            COALESCE(SUM(CASE WHEN type IN ('wholesale', 'event') THEN total_amount ELSE 0 END), 0) as event_total,
+            SUM(CASE WHEN type IN ('retail', 'wholesale', 'event') THEN 1 ELSE 0 END) as count,
+            COALESCE(SUM(CASE WHEN type IN ('retail', 'wholesale', 'event') THEN total_amount ELSE 0 END), 0) as total
+            FROM bills 
+            WHERE DATE(created_at) = '$today'");
+        if ($todayBillsStmt) {
+            $todayBills = $todayBillsStmt->fetch(PDO::FETCH_ASSOC) ?: $todayBills;
+        }
 
-// Recent bills
-$recentBills = $pdo->query("SELECT b.*, c.name as customer_name FROM bills b LEFT JOIN customers c ON b.customer_id = c.id ORDER BY b.created_at DESC LIMIT 5")->fetchAll();
-$lowStockItems = $pdo->query("SELECT sku, name, stock_quantity, min_stock_level FROM products WHERE is_active = 1 AND stock_quantity <= min_stock_level ORDER BY stock_quantity ASC, name ASC LIMIT 100")->fetchAll();
+        $monthBillsStmt = $pdo->query("SELECT 
+            SUM(CASE WHEN type = 'retail' THEN 1 ELSE 0 END) as retail_count,
+            SUM(CASE WHEN type IN ('wholesale', 'event') THEN 1 ELSE 0 END) as event_count,
+            COALESCE(SUM(CASE WHEN type = 'retail' THEN total_amount ELSE 0 END), 0) as retail_total,
+            COALESCE(SUM(CASE WHEN type IN ('wholesale', 'event') THEN total_amount ELSE 0 END), 0) as event_total,
+            SUM(CASE WHEN type IN ('retail', 'wholesale', 'event') THEN 1 ELSE 0 END) as count,
+            COALESCE(SUM(CASE WHEN type IN ('retail', 'wholesale', 'event') THEN total_amount ELSE 0 END), 0) as total
+            FROM bills 
+            WHERE MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())");
+        if ($monthBillsStmt) {
+            $monthBills = $monthBillsStmt->fetch(PDO::FETCH_ASSOC) ?: $monthBills;
+        }
+
+        $totalProducts = (int) ($pdo->query("SELECT COUNT(*) FROM products WHERE is_active = 1")->fetchColumn() ?: 0);
+        $lowStock = (int) ($pdo->query("SELECT COUNT(*) FROM products WHERE stock_quantity <= min_stock_level AND is_active = 1")->fetchColumn() ?: 0);
+
+        // Recent bills
+        $recentBillsStmt = $pdo->query("SELECT b.*, c.name as customer_name FROM bills b LEFT JOIN customers c ON b.customer_id = c.id ORDER BY b.created_at DESC LIMIT 5");
+        if ($recentBillsStmt) {
+            $recentBills = $recentBillsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
+
+        $lowStockItemsStmt = $pdo->query("SELECT sku, name, stock_quantity, min_stock_level FROM products WHERE is_active = 1 AND stock_quantity <= min_stock_level ORDER BY stock_quantity ASC, name ASC LIMIT 100");
+        if ($lowStockItemsStmt) {
+            $lowStockItems = $lowStockItemsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
+    } catch (PDOException $e) {
+        $_SESSION['demo_mode'] = true;
+        $pdo = null;
+    }
+}
 
 include 'header.php';
 ?>
@@ -98,9 +118,8 @@ include 'header.php';
 <div class="row">
     <div class="col-md-8">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card-header">
                 <span><i class="bi bi-receipt me-2"></i>Recent Bills</span>
-                <a href="?page=reports" class="btn btn-sm btn-outline-primary">View All</a>
             </div>
             <div class="card-body p-0">
                 <table class="table table-hover mb-0">
@@ -109,7 +128,12 @@ include 'header.php';
                     </thead>
                     <tbody>
                         <?php foreach ($recentBills as $bill): ?>
-                        <tr>
+                        <?php
+                            $billType = $bill['type'] ?? '';
+                            $billViewPage = $billType === 'retail' ? 'retail' : 'event';
+                            $billViewUrl = '?page=' . $billViewPage . '&action=view&id=' . intval($bill['id'] ?? 0);
+                        ?>
+                        <tr class="recent-bill-row" style="cursor:pointer" onclick="window.location.href='<?= htmlspecialchars($billViewUrl, ENT_QUOTES) ?>'">
                             <td><strong><?= htmlspecialchars($bill['bill_number']) ?></strong></td>
                             <td><?= htmlspecialchars($bill['customer_name'] ?? 'Walk-in') ?></td>
                             <td><span class="badge bg-<?= $bill['type'] == 'retail' ? 'primary' : 'success' ?>"><?= $bill['type'] == 'wholesale' ? 'Event' : 'Retail' ?></span></td>
@@ -122,6 +146,11 @@ include 'header.php';
                         <?php endif; ?>
                     </tbody>
                 </table>
+                <div class="p-3 border-top bg-light-subtle d-flex justify-content-end">
+                    <a href="?page=retail#topSellingSummaryCard" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-bar-chart-line me-2"></i>Top Selling Items Summary
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -132,6 +161,7 @@ include 'header.php';
                 <div class="d-grid gap-2">
                     <a href="?page=retail&action=create" class="btn btn-primary"><i class="bi bi-cart-plus me-2"></i>New Retail Bill</a>
                     <a href="?page=event&action=create" class="btn btn-success"><i class="bi bi-calendar-event me-2"></i>New Event Bill</a>
+                    <a href="?page=event#eventCalendarWidget" class="btn btn-outline-success"><i class="bi bi-calendar3 me-2"></i>View Event Calander</a>
                     <a href="?page=products&action=create" class="btn btn-outline-primary"><i class="bi bi-plus-lg me-2"></i>Add Stock Item</a>
                     <button type="button" class="btn btn-outline-secondary" onclick="downloadDashboardPdfReport()"><i class="bi bi-file-earmark-pdf me-2"></i>Generate Dashboard PDF</button>
                 </div>
