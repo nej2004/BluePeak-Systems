@@ -911,12 +911,14 @@ if ($action === 'create' || $action === 'edit') {
     foreach ($supplierRows as $row) {
         $supplierId = (int) $row['id'];
         if (!isset($suppliers[$supplierId])) {
+            $advancePaid = isset($row['advance_paid']) ? (float) $row['advance_paid'] : 0.00;
             $suppliers[$supplierId] = [
                 'id' => $supplierId,
                 'supplier_code' => $row['supplier_code'],
                 'name' => $row['name'],
                 'status' => $row['status'],
                 'order_date' => $row['order_date'],
+                'advance_paid' => $advancePaid,
                 'items' => [],
                 'quantity' => [],
                 'unit_price' => [],
@@ -929,6 +931,14 @@ if ($action === 'create' || $action === 'edit') {
             $suppliers[$supplierId]['unit_price'][] = (float) $row['unit_price'];
         }
     }
+
+    // Calculate total and balance due for each supplier
+    foreach ($suppliers as &$supplier) {
+        $total = array_sum(array_map(function($qty, $price) { return $qty * $price; }, $supplier['quantity'], $supplier['unit_price']));
+        $supplier['total'] = $total;
+        $supplier['balance_due'] = $total - $supplier['advance_paid'];
+    }
+    unset($supplier);
 
     $title = 'Manage Suppliers';
     if ($filter === 'confirmed') {
@@ -994,7 +1004,8 @@ if ($action === 'create' || $action === 'edit') {
                 </thead>
                 <tbody>
                     <?php foreach ($suppliers as $supplier): ?>
-                    <tr data-supplier-id="<?= htmlspecialchars($supplier['supplier_code']) ?>" data-supplier-name="<?= htmlspecialchars($supplier['name']) ?>">
+                    <?php $balanceDue = $supplier['balance_due'] ?? 0; $isHighBalance = $balanceDue > 100000; ?>
+                    <tr data-supplier-id="<?= htmlspecialchars($supplier['supplier_code']) ?>" data-supplier-name="<?= htmlspecialchars($supplier['name']) ?>" data-balance-due="<?= $balanceDue ?>" style="<?= $isHighBalance ? 'background-color: #ffcccc; color: #8b0000;' : '' ?>">
                         <td><?= htmlspecialchars($supplier['supplier_code']) ?></td>
                         <td><?= htmlspecialchars($supplier['name']) ?></td>
                         <td><?php foreach ($supplier['items'] as $item): ?><div><?= htmlspecialchars($item) ?></div><?php endforeach; ?></td>
