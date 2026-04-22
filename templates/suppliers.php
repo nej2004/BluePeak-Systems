@@ -945,9 +945,10 @@ if ($action === 'create' || $action === 'edit') {
     }
     ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4 gap-3">
     <h4 class="mb-0"><?= $title ?></h4>
-    <div class="d-flex gap-2">
+    <input type="text" id="supplierSearch" class="form-control" placeholder="Search by ID or name..." style="max-width: 300px;">
+    <div class="d-flex gap-2 ms-auto">
         <a href="?page=suppliers&action=create" class="btn btn-primary"><i class="bi bi-plus-lg me-2"></i>Add Supplier</a>
         <a href="?page=suppliers&action=past" class="btn btn-secondary"><i class="bi bi-clock-history me-2"></i>View Past Suppliers</a>
     </div>
@@ -993,7 +994,7 @@ if ($action === 'create' || $action === 'edit') {
                 </thead>
                 <tbody>
                     <?php foreach ($suppliers as $supplier): ?>
-                    <tr>
+                    <tr data-supplier-id="<?= htmlspecialchars($supplier['supplier_code']) ?>" data-supplier-name="<?= htmlspecialchars($supplier['name']) ?>">
                         <td><?= htmlspecialchars($supplier['supplier_code']) ?></td>
                         <td><?= htmlspecialchars($supplier['name']) ?></td>
                         <td><?php foreach ($supplier['items'] as $item): ?><div><?= htmlspecialchars($item) ?></div><?php endforeach; ?></td>
@@ -1025,6 +1026,32 @@ if ($action === 'create' || $action === 'edit') {
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('supplierSearch');
+    if (!searchInput) return;
+    
+    const tableBody = document.querySelector('table tbody');
+    const rows = Array.from(tableBody.querySelectorAll('tr')).filter(row => row.dataset.supplierId);
+    
+    searchInput.addEventListener('keyup', function() {
+        const query = this.value.toLowerCase().trim();
+        
+        if (!query) {
+            rows.forEach(row => row.style.display = '');
+            return;
+        }
+        
+        rows.forEach(row => {
+            const id = (row.dataset.supplierId || '').toLowerCase();
+            const name = (row.dataset.supplierName || '').toLowerCase();
+            const matches = id.includes(query) || name.includes(query);
+            row.style.display = matches ? '' : 'none';
+        });
+    });
+});
+</script>
 <?php
 }
 
