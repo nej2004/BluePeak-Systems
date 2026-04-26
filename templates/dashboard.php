@@ -7,6 +7,7 @@ $totalProducts = 0;
 $lowStock = 0;
 $recentBills = [];
 $lowStockItems = [];
+$paymentSnapshot = ['paid' => 0, 'partial' => 0, 'pending' => 0];
 
 if ($pdo) {
     try {
@@ -47,6 +48,17 @@ if ($pdo) {
             $recentBills = $recentBillsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         }
 
+        foreach ($recentBills as $bill) {
+            $status = strtolower((string) ($bill['payment_status'] ?? 'pending'));
+            if ($status === 'paid') {
+                $paymentSnapshot['paid']++;
+            } elseif ($status === 'partial') {
+                $paymentSnapshot['partial']++;
+            } else {
+                $paymentSnapshot['pending']++;
+            }
+        }
+
         $lowStockItemsStmt = $pdo->query("SELECT sku, name, stock_quantity, min_stock_level FROM products WHERE is_active = 1 AND stock_quantity <= min_stock_level ORDER BY stock_quantity ASC, name ASC LIMIT 100");
         if ($lowStockItemsStmt) {
             $lowStockItems = $lowStockItemsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -56,6 +68,21 @@ if ($pdo) {
         $pdo = null;
     }
 }
+
+$todayBillCount = (int) ($todayBills['count'] ?? 0);
+$monthBillCount = (int) ($monthBills['count'] ?? 0);
+$todaySalesTotal = (float) ($todayBills['total'] ?? 0);
+$monthSalesTotal = (float) ($monthBills['total'] ?? 0);
+$todayAverageBill = $todayBillCount > 0 ? $todaySalesTotal / $todayBillCount : 0;
+$monthAverageBill = $monthBillCount > 0 ? $monthSalesTotal / $monthBillCount : 0;
+$monthDaysElapsed = max(1, (int) date('j'));
+$monthDailyRunRate = $monthSalesTotal / $monthDaysElapsed;
+$runRateDelta = $monthDailyRunRate > 0 ? (($todaySalesTotal - $monthDailyRunRate) / $monthDailyRunRate) * 100 : 0;
+$retailMixPct = $monthSalesTotal > 0 ? (((float) ($monthBills['retail_total'] ?? 0)) / $monthSalesTotal) * 100 : 0;
+$eventMixPct = $monthSalesTotal > 0 ? (((float) ($monthBills['event_total'] ?? 0)) / $monthSalesTotal) * 100 : 0;
+$lowStockRate = $totalProducts > 0 ? (($lowStock / $totalProducts) * 100) : 0;
+$collectionsRiskLabel = $paymentSnapshot['pending'] >= 2 ? 'High' : ($paymentSnapshot['pending'] >= 1 ? 'Medium' : 'Low');
+$inventoryRiskLabel = $lowStockRate >= 20 ? 'High' : ($lowStockRate >= 10 ? 'Medium' : 'Low');
 
 include 'header.php';
 ?>
@@ -170,6 +197,135 @@ include 'header.php';
     </div>
 </div>
 
+<div class="card mt-4 mb-4 border-0 shadow-sm overflow-hidden">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 bg-gradient" style="background: linear-gradient(135deg, rgba(13,110,253,.16), rgba(25,135,84,.12));">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-lightbulb-fill text-warning"></i>
+                <strong>Business Insights</strong>
+            </div>
+            <small class="text-muted">Executive snapshot, trend interpretation, and next-step priorities</small>
+        </div>
+        <span class="badge rounded-pill text-bg-primary px-3 py-2">Live dashboard intelligence</span>
+    </div>
+    <div class="card-body">
+        <div class="row g-3 mb-3">
+            <div class="col-lg-3 col-md-6">
+                <div class="p-3 rounded-4 h-100 border bg-body-tertiary">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small">Sales Today</span>
+                        <i class="bi bi-graph-up-arrow text-primary"></i>
+                    </div>
+                    <div class="fs-4 fw-bold"><?= $currency ?> <?= number_format($todaySalesTotal, 2) ?></div>
+                    <div class="text-muted small"><?= $todayBillCount ?> bills • Avg <?= $currency ?> <?= number_format($todayAverageBill, 2) ?></div>
+                    <div class="progress mt-3" style="height: 8px;">
+                        <div class="progress-bar bg-primary" style="width: <?= max(0, min(100, 50 + $runRateDelta)) ?>%;"></div>
+                    </div>
+                    <div class="mt-2 small <?= $runRateDelta >= 0 ? 'text-success' : 'text-danger' ?> fw-semibold">
+                        <?= $runRateDelta >= 0 ? '+' : '' ?><?= number_format($runRateDelta, 1) ?>% vs month run rate
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="p-3 rounded-4 h-100 border bg-body-tertiary">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small">Monthly Performance</span>
+                        <i class="bi bi-calendar-month text-success"></i>
+                    </div>
+                    <div class="fs-4 fw-bold"><?= $currency ?> <?= number_format($monthSalesTotal, 2) ?></div>
+                    <div class="text-muted small"><?= $monthBillCount ?> bills • Avg <?= $currency ?> <?= number_format($monthAverageBill, 2) ?></div>
+                    <div class="progress mt-3" style="height: 8px;">
+                        <div class="progress-bar bg-success" style="width: <?= max(0, min(100, $retailMixPct)) ?>%;"></div>
+                    </div>
+                    <div class="mt-2 small text-muted fw-semibold">
+                        Retail <?= number_format($retailMixPct, 1) ?>% • Event <?= number_format($eventMixPct, 1) ?>%
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="p-3 rounded-4 h-100 border bg-body-tertiary">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small">Inventory Health</span>
+                        <i class="bi bi-box-seam text-warning"></i>
+                    </div>
+                    <div class="fs-4 fw-bold"><?= $lowStock ?> low stock</div>
+                    <div class="text-muted small"><?= $totalProducts ?> active items • <?= number_format($lowStockRate, 1) ?>% exposure</div>
+                    <div class="progress mt-3" style="height: 8px;">
+                        <div class="progress-bar bg-warning" style="width: <?= max(0, min(100, $lowStockRate)) ?>%;"></div>
+                    </div>
+                    <div class="mt-2 small fw-semibold <?= $inventoryRiskLabel === 'High' ? 'text-danger' : ($inventoryRiskLabel === 'Medium' ? 'text-warning' : 'text-success') ?>">
+                        <?= $inventoryRiskLabel ?> restock priority
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="p-3 rounded-4 h-100 border bg-body-tertiary">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small">Collections Pulse</span>
+                        <i class="bi bi-cash-coin text-danger"></i>
+                    </div>
+                    <div class="fs-4 fw-bold"><?= $paymentSnapshot['paid'] ?> paid</div>
+                    <div class="text-muted small"><?= $paymentSnapshot['partial'] ?> partial • <?= $paymentSnapshot['pending'] ?> pending</div>
+                    <div class="progress mt-3" style="height: 8px;">
+                        <div class="progress-bar bg-danger" style="width: <?= max(0, min(100, $paymentSnapshot['pending'] * 25)) ?>%;"></div>
+                    </div>
+                    <div class="mt-2 small fw-semibold <?= $collectionsRiskLabel === 'High' ? 'text-danger' : ($collectionsRiskLabel === 'Medium' ? 'text-warning' : 'text-success') ?>">
+                        <?= $collectionsRiskLabel ?> follow-up priority
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-lg-7">
+                <div class="h-100 p-3 rounded-4 border bg-body-tertiary">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi bi-bar-chart-steps text-primary"></i>
+                        <strong>Business Interpretation</strong>
+                    </div>
+                    <div class="d-grid gap-2 text-secondary">
+                        <div class="d-flex gap-2"><span class="text-primary">•</span><span>Revenue concentration this month is <?= number_format($retailMixPct, 1) ?>% retail and <?= number_format($eventMixPct, 1) ?>% event/wholesale.</span></div>
+                        <div class="d-flex gap-2"><span class="text-primary">•</span><span>Average bill size today is <?= $currency ?> <?= number_format($todayAverageBill, 2) ?> compared to the month average of <?= $currency ?> <?= number_format($monthAverageBill, 2) ?>.</span></div>
+                        <div class="d-flex gap-2"><span class="text-primary">•</span><span><?= $runRateDelta >= 0 ? 'Current daily pace is above the month-to-date run rate, showing healthy momentum.' : 'Current daily pace is below the month-to-date run rate, so short-term sales activity should be pushed.' ?></span></div>
+                        <div class="d-flex gap-2"><span class="text-primary">•</span><span><?= $lowStock > 0 ? "Inventory pressure is present with {$lowStock} item(s) already below minimum levels." : 'No current low-stock pressure detected in active inventory.' ?></span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="h-100 p-3 rounded-4 border bg-body-tertiary">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi bi-list-check text-success"></i>
+                        <strong>Recommended Actions</strong>
+                    </div>
+                    <div class="d-grid gap-3">
+                        <div class="d-flex gap-3 align-items-start">
+                            <span class="badge text-bg-danger rounded-pill mt-1">High</span>
+                            <div>
+                                <div class="fw-semibold">Follow up pending bills</div>
+                                <div class="text-muted small"><?= $collectionsRiskLabel === 'High' ? 'Run payment follow-ups daily to speed up cash conversion.' : 'Keep reminders active for partial and pending bills.' ?></div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-3 align-items-start">
+                            <span class="badge text-bg-warning rounded-pill mt-1">High</span>
+                            <div>
+                                <div class="fw-semibold">Replenish low-stock items</div>
+                                <div class="text-muted small"><?= $inventoryRiskLabel === 'High' ? 'Create urgent replenishment orders for shortage items.' : 'Review reorder points and restock the items already near minimum level.' ?></div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-3 align-items-start">
+                            <span class="badge text-bg-primary rounded-pill mt-1">Medium</span>
+                            <div>
+                                <div class="fw-semibold">Push targeted sales</div>
+                                <div class="text-muted small"><?= $runRateDelta < 0 ? 'Use bundles, upsell scripts, and repeat-buyer calls to lift today’s pace.' : 'Sustain current momentum with targeted upsells on high-margin items.' ?></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script>
@@ -178,11 +334,19 @@ const dashboardReportData = {
     currency: <?= json_encode($currency) ?>,
     todaySales: {
         total: <?= json_encode((float) ($todayBills['total'] ?? 0)) ?>,
-        count: <?= json_encode((int) ($todayBills['count'] ?? 0)) ?>
+        count: <?= json_encode((int) ($todayBills['count'] ?? 0)) ?>,
+        retailTotal: <?= json_encode((float) ($todayBills['retail_total'] ?? 0)) ?>,
+        eventTotal: <?= json_encode((float) ($todayBills['event_total'] ?? 0)) ?>,
+        retailCount: <?= json_encode((int) ($todayBills['retail_count'] ?? 0)) ?>,
+        eventCount: <?= json_encode((int) ($todayBills['event_count'] ?? 0)) ?>
     },
     monthlySales: {
         total: <?= json_encode((float) ($monthBills['total'] ?? 0)) ?>,
-        count: <?= json_encode((int) ($monthBills['count'] ?? 0)) ?>
+        count: <?= json_encode((int) ($monthBills['count'] ?? 0)) ?>,
+        retailTotal: <?= json_encode((float) ($monthBills['retail_total'] ?? 0)) ?>,
+        eventTotal: <?= json_encode((float) ($monthBills['event_total'] ?? 0)) ?>,
+        retailCount: <?= json_encode((int) ($monthBills['retail_count'] ?? 0)) ?>,
+        eventCount: <?= json_encode((int) ($monthBills['event_count'] ?? 0)) ?>
     },
     stocks: {
         activeItems: <?= json_encode((int) $totalProducts) ?>,
@@ -218,73 +382,130 @@ function downloadDashboardPdfReport() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'pt', 'a4');
 
+    const fmtMoney = (value) => `${dashboardReportData.currency} ${Number(value || 0).toFixed(2)}`;
+    const toPercent = (value) => `${Number(value || 0).toFixed(1)}%`;
+    const safeDivide = (num, den) => den > 0 ? num / den : 0;
+
+    const todayAvgBill = safeDivide(dashboardReportData.todaySales.total, dashboardReportData.todaySales.count);
+    const monthAvgBill = safeDivide(dashboardReportData.monthlySales.total, dashboardReportData.monthlySales.count);
+    const monthDaysElapsed = new Date().getDate();
+    const monthDailyRunRate = safeDivide(dashboardReportData.monthlySales.total, monthDaysElapsed);
+    const runRateDelta = monthDailyRunRate > 0
+        ? ((dashboardReportData.todaySales.total - monthDailyRunRate) / monthDailyRunRate) * 100
+        : 0;
+
+    const retailMixPct = safeDivide(dashboardReportData.monthlySales.retailTotal, dashboardReportData.monthlySales.total) * 100;
+    const eventMixPct = safeDivide(dashboardReportData.monthlySales.eventTotal, dashboardReportData.monthlySales.total) * 100;
+    const lowStockRate = safeDivide(dashboardReportData.stocks.lowStockItems, dashboardReportData.stocks.activeItems) * 100;
+
+    const paymentSnapshot = dashboardReportData.recentBills.reduce((acc, bill) => {
+        const status = String(bill.payment_status || 'pending').toLowerCase();
+        if (status === 'paid') acc.paid += 1;
+        else if (status === 'partial') acc.partial += 1;
+        else acc.pending += 1;
+        return acc;
+    }, { paid: 0, partial: 0, pending: 0 });
+
+    const collectionsRiskLabel = paymentSnapshot.pending >= 2 ? 'High' : (paymentSnapshot.pending >= 1 ? 'Medium' : 'Low');
+    const inventoryRiskLabel = lowStockRate >= 20 ? 'High' : (lowStockRate >= 10 ? 'Medium' : 'Low');
+
+    const sectionTitle = (text, y) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(25, 47, 89);
+        doc.text(text, 40, y);
+        doc.setDrawColor(210, 220, 235);
+        doc.line(40, y + 6, 555, y + 6);
+    };
+
+    const writeParagraph = (text, y, maxWidth = 515) => {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(55, 65, 81);
+        const lines = doc.splitTextToSize(text, maxWidth);
+        doc.text(lines, 40, y);
+        return y + (lines.length * 13);
+    };
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
-    doc.text(`${dashboardReportData.companyName} - Dashboard Report`, 40, 40);
+    doc.setTextColor(17, 24, 39);
+    doc.text(`${dashboardReportData.companyName} - Business Insights Report`, 40, 40);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
+    doc.setTextColor(75, 85, 99);
     doc.text(`Generated: ${dashboardReportData.generatedAt}`, 40, 58);
 
-    const summaryRows = [
-        ['Today Sales', `${dashboardReportData.currency} ${dashboardReportData.todaySales.total.toFixed(2)}`, `${dashboardReportData.todaySales.count} bills`],
-        ['Monthly Sales', `${dashboardReportData.currency} ${dashboardReportData.monthlySales.total.toFixed(2)}`, `${dashboardReportData.monthlySales.count} bills`],
-        ['Active Stock Items', `${dashboardReportData.stocks.activeItems}`, 'items'],
-        ['Low Stock Items', `${dashboardReportData.stocks.lowStockItems}`, 'need restock']
+    sectionTitle('Executive Snapshot', 88);
+    doc.autoTable({
+        startY: 100,
+        head: [['Insight Area', 'Current Position', 'Signal']],
+        body: [
+            ['Sales Today', `${fmtMoney(dashboardReportData.todaySales.total)} across ${dashboardReportData.todaySales.count} bills`, runRateDelta >= 0 ? `Above monthly run rate by ${toPercent(runRateDelta)}` : `Below monthly run rate by ${toPercent(Math.abs(runRateDelta))}`],
+            ['Monthly Performance', `${fmtMoney(dashboardReportData.monthlySales.total)} across ${dashboardReportData.monthlySales.count} bills`, `Average bill value: ${fmtMoney(monthAvgBill)}`],
+            ['Inventory Health', `${dashboardReportData.stocks.lowStockItems} low stock out of ${dashboardReportData.stocks.activeItems} active items`, `${toPercent(lowStockRate)} low stock exposure (${inventoryRiskLabel} risk)`],
+            ['Collections Pulse', `${paymentSnapshot.paid} paid, ${paymentSnapshot.partial} partial, ${paymentSnapshot.pending} pending (recent bills)`, `${collectionsRiskLabel} collections follow-up priority`]
+        ],
+        theme: 'grid',
+        styles: { fontSize: 9, cellPadding: 6 },
+        headStyles: { fillColor: [30, 64, 175] },
+        columnStyles: {
+            0: { cellWidth: 130 },
+            1: { cellWidth: 200 },
+            2: { cellWidth: 185 }
+        }
+    });
+
+    let cursorY = doc.lastAutoTable.finalY + 24;
+    sectionTitle('Business Interpretation', cursorY);
+    cursorY += 16;
+
+    const interpretationLines = [
+        `Revenue concentration this month is ${toPercent(retailMixPct)} retail and ${toPercent(eventMixPct)} event/wholesale.`,
+        `Average bill size today is ${fmtMoney(todayAvgBill)} compared to monthly average ${fmtMoney(monthAvgBill)}.`,
+        runRateDelta >= 0
+            ? 'Current daily pace is trending above the month-to-date run rate, indicating healthy near-term momentum.'
+            : 'Current daily pace is below the month-to-date run rate, signaling a need to push near-term sales activity.',
+        lowStockRate > 0
+            ? `Inventory pressure is present with ${dashboardReportData.stocks.lowStockItems} item(s) already below minimum levels.`
+            : 'No current low-stock pressure detected in active inventory.'
     ];
 
-    doc.autoTable({
-        startY: 72,
-        head: [['Metric', 'Value', 'Details']],
-        body: summaryRows,
-        theme: 'grid',
-        styles: { fontSize: 10 },
-        headStyles: { fillColor: [33, 150, 243] }
+    interpretationLines.forEach((line) => {
+        cursorY = writeParagraph(`- ${line}`, cursorY);
+        cursorY += 4;
     });
 
-    const recentBillsRows = dashboardReportData.recentBills.map((bill) => {
-        const billType = bill.type === 'wholesale' ? 'Event' : 'Retail';
-        const dateText = bill.created_at ? new Date(bill.created_at).toLocaleString() : '-';
-        return [
-            bill.bill_number || '-',
-            dateText,
-            bill.customer_name || 'Walk-in',
-            billType,
-            `${dashboardReportData.currency} ${Number(bill.total_amount || 0).toFixed(2)}`,
-            (bill.payment_status || 'pending').toUpperCase()
-        ];
-    });
+    cursorY += 6;
+    sectionTitle('Recommended Actions (Next 7 Days)', cursorY);
+    cursorY += 12;
 
     doc.autoTable({
-        startY: doc.lastAutoTable.finalY + 18,
-        head: [['Recent Bills', 'Date', 'Customer', 'Type', 'Amount', 'Status']],
-        body: recentBillsRows.length ? recentBillsRows : [['No recent bills', '-', '-', '-', '-', '-']],
+        startY: cursorY,
+        head: [['Priority', 'Action', 'Expected Impact']],
+        body: [
+            ['High', collectionsRiskLabel === 'High' ? 'Run payment follow-ups for pending bills daily.' : 'Maintain payment reminders for partial and pending bills.', 'Faster cash conversion and lower receivable risk'],
+            ['High', inventoryRiskLabel === 'High' ? 'Create urgent replenishment orders for top shortage items.' : 'Review reorder levels and restock low-stock items.', 'Reduced stock-outs and fewer lost sales'],
+            ['Medium', runRateDelta < 0 ? 'Launch a short-term sales push (bundles, upsell scripts, repeat buyer calls).' : 'Sustain current sales pace with targeted upsells on high-margin items.', 'Improved average ticket size and stronger weekly revenue']
+        ],
         theme: 'striped',
-        styles: { fontSize: 9 },
-        headStyles: { fillColor: [76, 175, 80] }
+        styles: { fontSize: 9, cellPadding: 6 },
+        headStyles: { fillColor: [22, 163, 74] },
+        columnStyles: {
+            0: { cellWidth: 70 },
+            1: { cellWidth: 280 },
+            2: { cellWidth: 165 }
+        }
     });
 
-    const lowStockRows = dashboardReportData.lowStockDetails.map((item) => {
-        return [
-            item.sku || '-',
-            item.name || '-',
-            String(item.stock_quantity ?? 0),
-            String(item.min_stock_level ?? 0),
-            String((item.min_stock_level ?? 0) - (item.stock_quantity ?? 0))
-        ];
-    });
-
-    doc.autoTable({
-        startY: doc.lastAutoTable.finalY + 18,
-        head: [['Low Stock Details', 'Item Name', 'Current', 'Min Level', 'Shortage']],
-        body: lowStockRows.length ? lowStockRows : [['-', 'No low stock items', '-', '-', '-']],
-        theme: 'striped',
-        styles: { fontSize: 9 },
-        headStyles: { fillColor: [255, 152, 0] }
-    });
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(9);
+    doc.setTextColor(107, 114, 128);
+    doc.text('This report highlights business signals and action priorities instead of detailed transaction listings.', 40, 800);
 
     const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-    doc.save(`dashboard-report-${stamp}.pdf`);
+    doc.save(`dashboard-business-insights-${stamp}.pdf`);
 }
 </script>
 

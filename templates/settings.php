@@ -123,11 +123,9 @@ include 'header.php';
                 <?php
                 $totalProducts = $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
                 $totalBills = $pdo->query("SELECT COUNT(*) FROM bills")->fetchColumn();
-                $totalCustomers = $pdo->query("SELECT COUNT(*) FROM customers")->fetchColumn();
                 ?>
                 <p><strong>Total Products:</strong> <?= $totalProducts ?></p>
                 <p><strong>Total Bills:</strong> <?= $totalBills ?></p>
-                <p><strong>Total Customers:</strong> <?= $totalCustomers ?></p>
             </div>
         </div>
     </div>

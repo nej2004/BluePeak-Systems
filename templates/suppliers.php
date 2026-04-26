@@ -504,6 +504,52 @@ if ($action === 'create' || $action === 'edit') {
             overflow: auto;
             max-height: 90vh;
         }
+
+        .supplier-detail-modal .table > :not(caption) > * > * {
+            border-color: #e5e7eb;
+        }
+
+        [data-bs-theme="dark"] .supplier-detail-overlay {
+            background: rgba(2, 6, 23, 0.72);
+        }
+
+        [data-bs-theme="dark"] .supplier-detail-modal {
+            background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+            color: #e5eefb;
+            border: 1px solid #243244;
+            box-shadow: 0 18px 36px rgba(0,0,0,0.25);
+        }
+
+        [data-bs-theme="dark"] .supplier-detail-modal h4,
+        [data-bs-theme="dark"] .supplier-detail-modal h6,
+        [data-bs-theme="dark"] .supplier-detail-modal p,
+        [data-bs-theme="dark"] .supplier-detail-modal strong,
+        [data-bs-theme="dark"] .supplier-detail-modal td,
+        [data-bs-theme="dark"] .supplier-detail-modal th {
+            color: #e5eefb;
+        }
+
+        [data-bs-theme="dark"] .supplier-detail-modal hr {
+            border-color: #243244;
+            opacity: 1;
+        }
+
+        [data-bs-theme="dark"] .supplier-detail-modal .table > :not(caption) > * > * {
+            background-color: transparent;
+            border-color: #243244;
+        }
+
+        [data-bs-theme="dark"] .supplier-detail-modal .btn-secondary {
+            background: #334155;
+            border-color: #475569;
+            color: #ffffff;
+        }
+
+        [data-bs-theme="dark"] .supplier-detail-modal .btn-secondary:hover {
+            background: #475569;
+            border-color: #64748b;
+        }
+
         @media (max-width: 768px) {
             .supplier-detail-modal {
                 padding: 1.25rem;
@@ -537,43 +583,78 @@ if ($action === 'create' || $action === 'edit') {
     <head>
         <meta charset="UTF-8">
         <title>Supplier Invoice - <?= htmlspecialchars($supplier['supplier_code']) ?></title>
+        <script>
+            (function () {
+                try {
+                    var storedTheme = localStorage.getItem('app-theme');
+                    document.documentElement.setAttribute('data-theme', storedTheme === 'dark' ? 'dark' : 'light');
+                } catch (e) {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                }
+            })();
+        </script>
         <style>
+            :root {
+                --bg: #f5f5f5;
+                --surface: #ffffff;
+                --surface-soft: #f9f9f9;
+                --text: #1f2937;
+                --text-muted: #6b7280;
+                --border: #d1d5db;
+                --primary: #1d4ed8;
+                --primary-dark: #1e40af;
+                --accent-soft: #e7f3ff;
+            }
+
+            [data-theme="dark"] {
+                --bg: #0b1220;
+                --surface: #111827;
+                --surface-soft: #0f172a;
+                --text: #e5eefb;
+                --text-muted: #94a3b8;
+                --border: #243244;
+                --primary: #1e3a8a;
+                --primary-dark: #1d4ed8;
+                --accent-soft: #172033;
+            }
+
             body {
                 font-family: Arial, sans-serif;
                 margin: 20px;
-                background-color: #f5f5f5;
+                background-color: var(--bg);
+                color: var(--text);
             }
             .invoice-container {
                 max-width: 900px;
                 margin: 0 auto;
-                background-color: white;
+                background-color: var(--surface);
                 padding: 30px;
-                border: 1px solid #ddd;
+                border: 1px solid var(--border);
                 box-shadow: 0 0 10px rgba(0,0,0,0.1);
             }
             .invoice-header {
                 text-align: center;
                 margin-bottom: 30px;
-                border-bottom: 2px solid #333;
+                border-bottom: 2px solid var(--border);
                 padding-bottom: 15px;
             }
             .invoice-header h1 {
                 margin: 0;
-                color: #333;
+                color: var(--text);
             }
             .invoice-header p {
                 margin: 5px 0;
-                color: #666;
+                color: var(--text-muted);
             }
             .supplier-info {
                 margin-bottom: 30px;
-                background-color: #f9f9f9;
+                background-color: var(--surface-soft);
                 padding: 15px;
-                border-left: 4px solid #007bff;
+                border-left: 4px solid var(--primary);
             }
             .supplier-info h3 {
                 margin-top: 0;
-                color: #333;
+                color: var(--text);
             }
             .info-grid {
                 display: grid;
@@ -585,10 +666,10 @@ if ($action === 'create' || $action === 'edit') {
             }
             .info-label {
                 font-weight: bold;
-                color: #555;
+                color: var(--text-muted);
             }
             .info-value {
-                color: #333;
+                color: var(--text);
             }
             table {
                 width: 100%;
@@ -596,7 +677,7 @@ if ($action === 'create' || $action === 'edit') {
                 margin-bottom: 30px;
             }
             th {
-                background-color: #007bff;
+                background-color: var(--primary);
                 color: white;
                 padding: 12px;
                 text-align: left;
@@ -604,10 +685,10 @@ if ($action === 'create' || $action === 'edit') {
             }
             td {
                 padding: 12px;
-                border-bottom: 1px solid #ddd;
+                border-bottom: 1px solid var(--border);
             }
             tr:nth-child(even) {
-                background-color: #f9f9f9;
+                background-color: var(--surface-soft);
             }
             .text-right {
                 text-align: right;
@@ -615,8 +696,8 @@ if ($action === 'create' || $action === 'edit') {
             .summary-section {
                 margin-top: 30px;
                 padding: 20px;
-                background-color: #f9f9f9;
-                border: 1px solid #ddd;
+                background-color: var(--surface-soft);
+                border: 1px solid var(--border);
             }
             .summary-row {
                 display: flex;
@@ -627,7 +708,7 @@ if ($action === 'create' || $action === 'edit') {
             .summary-row.total {
                 font-weight: bold;
                 font-size: 18px;
-                background-color: #e7f3ff;
+                background-color: var(--accent-soft);
                 padding: 10px;
                 border-radius: 4px;
                 margin-top: 15px;
@@ -641,7 +722,7 @@ if ($action === 'create' || $action === 'edit') {
             }
             .print-button button,
             .print-button a {
-                background-color: #007bff;
+                background-color: var(--primary);
                 color: white;
                 border: none;
                 padding: 12px 30px;
@@ -653,13 +734,16 @@ if ($action === 'create' || $action === 'edit') {
             }
             .print-button button:hover,
             .print-button a:hover {
-                background-color: #0056b3;
+                background-color: var(--primary-dark);
             }
             .print-button a.back-btn {
                 background-color: #6c757d;
             }
             .print-button a.back-btn:hover {
                 background-color: #5a6268;
+            }
+            [data-theme="dark"] .invoice-container {
+                box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
             }
             @media print {
                 body {
@@ -997,6 +1081,20 @@ if ($action === 'create' || $action === 'edit') {
     </div>
 </div>
 
+<style>
+    .high-balance-row > td {
+        background-color: #ffb3ba !important;
+        color: #7a0010 !important;
+        border-color: #e05d6f !important;
+    }
+
+    [data-bs-theme="dark"] .high-balance-row > td {
+        background-color: #7a1e2c !important;
+        color: #ffe3e7 !important;
+        border-color: #b23549 !important;
+    }
+</style>
+
 <div class="card">
     <div class="card-header bg-white border-0 pt-4 px-4">
         <div class="row text-center">
@@ -1038,7 +1136,7 @@ if ($action === 'create' || $action === 'edit') {
                 <tbody>
                     <?php foreach ($suppliers as $supplier): ?>
                     <?php $balanceDue = $supplier['balance_due'] ?? 0; $isHighBalance = $balanceDue > 100000; ?>
-                    <tr data-supplier-id="<?= htmlspecialchars($supplier['supplier_code']) ?>" data-supplier-name="<?= htmlspecialchars($supplier['name']) ?>" data-balance-due="<?= $balanceDue ?>" style="<?= $isHighBalance ? 'background-color: #ffcccc; color: #8b0000;' : '' ?>">
+                    <tr class="<?= $isHighBalance ? 'high-balance-row' : '' ?>" data-supplier-id="<?= htmlspecialchars($supplier['supplier_code']) ?>" data-supplier-name="<?= htmlspecialchars($supplier['name']) ?>" data-balance-due="<?= $balanceDue ?>">
                         <td><?= htmlspecialchars($supplier['supplier_code']) ?></td>
                         <td><?= htmlspecialchars($supplier['name']) ?></td>
                         <td><?php foreach ($supplier['items'] as $item): ?><div><?= htmlspecialchars($item) ?></div><?php endforeach; ?></td>
