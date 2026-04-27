@@ -3,6 +3,7 @@ $action = $_GET['action'] ?? 'index';
 $currency = $settings['currency_symbol'] ?? 'LKR';
 
 if ($action === 'download') {
+    // Report export filters for retail PDF generation.
     $filterMode = $_GET['filter_mode'] ?? 'all';
     if (!in_array($filterMode, ['all', 'date', 'price'], true)) {
         $filterMode = 'all';
@@ -12,6 +13,7 @@ if ($action === 'download') {
     $priceFrom = (isset($_GET['price_from']) && $_GET['price_from'] !== '') ? max(0, floatval($_GET['price_from'])) : null;
     $priceTo = (isset($_GET['price_to']) && $_GET['price_to'] !== '') ? max(0, floatval($_GET['price_to'])) : null;
 
+    // Build export query incrementally from selected filter mode.
     $query = "SELECT b.*, c.name as customer_name FROM bills b LEFT JOIN customers c ON b.customer_id = c.id WHERE b.type = 'retail'";
     $params = [];
 
@@ -41,6 +43,7 @@ if ($action === 'download') {
     $stmt->execute($params);
     $billsForExport = $stmt->fetchAll();
 
+    // Minimal PDF helpers to keep output dependency-free.
     $pdfEscape = function ($text) {
         $text = (string)$text;
         $text = str_replace('\\', '\\\\', $text);
@@ -217,6 +220,7 @@ if ($action === 'download') {
 
     $objects[2] = '<< /Type /Pages /Kids [' . implode(' ', $pageRefs) . '] /Count ' . count($pageRefs) . ' >>';
 
+    // Serialize object graph and finalize xref/trailer.
     ksort($objects);
     $maxObj = max(array_keys($objects));
 
@@ -254,6 +258,7 @@ if ($action === 'download') {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'clear_before') {
+        // Bulk-delete old retail bills and bill_items before selected date.
         $clearBeforeDate = trim($_POST['clear_before_date'] ?? '');
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $clearBeforeDate)) {
             header('Location: ?page=retail&clear_error=1');
@@ -289,6 +294,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
     } elseif ($action === 'store') {
+        // Create retail bill, insert items, and decrement stock atomically.
         $customer_id = $_POST['customer_id'] ?: null;
         $items = $_POST['items'] ?? [];
         $discountPercent = floatval($_POST['discount_percentage'] ?? ($_POST['discount_amount'] ?? 0));
@@ -348,6 +354,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     } elseif ($action === 'update') {
+        // Rebuild bill items and recalculate totals for an existing retail bill.
         $id = intval($_GET['id'] ?? 0);
         $customer_id = $_POST['customer_id'] ?: null;
         $items = $_POST['items'] ?? [];
@@ -417,6 +424,7 @@ include 'header.php';
 
 <?php if ($action === 'index'): ?>
 <?php
+// Optional dashboard period filter shared with dashboard quick-links.
 $period = $_GET['period'] ?? '';
 if (!in_array($period, ['today', 'month'], true)) {
     $period = '';
@@ -429,6 +437,7 @@ if ($period === 'today') {
     $topSalesCondition .= " AND MONTH(b.created_at) = MONTH(CURRENT_DATE()) AND YEAR(b.created_at) = YEAR(CURRENT_DATE())";
 }
 
+// Top-selling analytics used by the summary card charts.
 $topSellingByQtyStmt = $pdo->prepare(
     "SELECT 
         bi.product_id,
@@ -873,6 +882,7 @@ if ($topQuantityProduct || $topRevenueProduct) {
 
 <script>
 (() => {
+    // Download-report form: enable only the inputs needed for selected filter mode.
     const reportForm = document.getElementById('reportFilterForm');
     if (!reportForm) return;
 
@@ -918,6 +928,7 @@ if ($topQuantityProduct || $topRevenueProduct) {
 
     setInputState();
 
+    // If linked from dashboard, auto-expand the top-selling summary card.
     if (window.location.hash === '#topSellingSummaryCard') {
         const collapseElement = document.getElementById('topSellingInsights');
         const toggleButton = document.querySelector('[data-bs-target="#topSellingInsights"]');
@@ -1059,6 +1070,7 @@ $selectedCustomerId = $isEdit ? ($editBill['customer_id'] ?? '') : '';
 </form>
 
 <script>
+// Retail bill editor state and totals calculation.
 const currency = '<?= $currency ?>';
 const taxRate = <?= $settings['tax_percentage'] ?? 0 ?>;
 const isEditMode = <?= $isEdit ? 'true' : 'false' ?>;
@@ -1089,6 +1101,7 @@ const productOptions = Array.from(productSelect.querySelectorAll('option[data-id
     label: option.textContent.trim()
 }));
 
+// Filter product options by the selected category.
 categorySelect.addEventListener('change', function () {
     const categoryId = this.value;
     productSelect.innerHTML = '';
@@ -1117,6 +1130,7 @@ categorySelect.addEventListener('change', function () {
         });
 });
 
+// Add selected product into the bill table.
 productSelect.addEventListener('change', function() {
     if (this.value) {
         const opt = this.selectedOptions[0];
@@ -1126,6 +1140,7 @@ productSelect.addEventListener('change', function() {
 });
 
 function addItem(product) {
+    // Prevent duplicate rows: increase quantity when product already exists.
     const existing = items.findIndex(i => i.product_id == product.id);
     if (existing >= 0) {
         const row = document.querySelector(`tr[data-index="${existing}"]`);
@@ -1148,12 +1163,14 @@ function addItem(product) {
     updateTotals();
 }
 
+// Delegate row edits for qty/price/discount.
 document.getElementById('itemsBody').addEventListener('input', function(e) {
     if (e.target.classList.contains('qty-input') || e.target.classList.contains('price-input') || e.target.classList.contains('discount-input')) {
         updateRowTotal(parseInt(e.target.dataset.index));
     }
 });
 
+// Delegate row removal buttons.
 document.getElementById('itemsBody').addEventListener('click', function(e) {
     if (e.target.closest('.remove-item')) {
         const index = parseInt(e.target.closest('.remove-item').dataset.index);
@@ -1165,6 +1182,7 @@ document.getElementById('itemsBody').addEventListener('click', function(e) {
 });
 
 function updateRowTotal(index) {
+    // Recompute line amount and sync row values into in-memory state.
     const row = document.querySelector(`tr[data-index="${index}"]`);
     const qty = parseInt(row.querySelector('.qty-input').value) || 0;
     const price = parseFloat(row.querySelector('.price-input').value) || 0;
@@ -1180,6 +1198,7 @@ function updateRowTotal(index) {
 }
 
 function updateTotals() {
+    // Calculate bill-level totals and payment balance with guardrails.
     let subtotal = 0;
     items.forEach(item => {
         const unitDiscount = Math.min(Math.max(item.discount || 0, 0), item.price || 0);
@@ -1206,11 +1225,13 @@ function updateTotals() {
 
 document.getElementById('discountPercent').addEventListener('input', updateTotals);
 document.getElementById('paidAmount').addEventListener('input', updateTotals);
+// Convenience action: set paid amount to exact grand total.
 document.getElementById('payFullBtn').addEventListener('click', function () {
     document.getElementById('paidAmount').value = currentGrandTotal.toFixed(2);
     updateTotals();
 });
 
+// Hydrate existing line items when editing an existing bill.
 if (isEditMode && Array.isArray(editItemsData) && editItemsData.length > 0) {
     document.getElementById('noItemsRow').style.display = 'none';
     editItemsData.forEach(item => {

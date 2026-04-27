@@ -15,6 +15,7 @@ define('CURRENCY', 'LKR');
 $pdo = null;
 $db_error = null;
 
+// Bootstrap DB connection early so all pages can share one PDO handle.
 try {
     // Try connection with longer timeout
     $pdo = new PDO(
@@ -40,7 +41,7 @@ try {
     $pdo = null;
 }
 
-// If connection failed, create a mock PDO for basic operations
+// If connection fails, switch to a lightweight mock layer to keep UI usable in demo mode.
 if (!$pdo) {
     // Create session-based mock for demo mode
     $_SESSION['demo_mode'] = true;
@@ -155,6 +156,7 @@ if (!$pdo) {
 // Tables assumed to already exist in database
 // If you need to initialize tables, run setup/init-db.php instead
 
+// Schema bootstrap and seed data. Safe to rerun because everything uses IF NOT EXISTS/guards.
 try {
     // Only run table creation if database is connected
     if ($pdo) {
@@ -372,7 +374,7 @@ try {
         }
     }
     
-    // Database integrity fix - run on every load to ensure consistency
+    // Lightweight integrity cleanup to remove orphaned/duplicate attendance rows.
     try {
         // Remove orphaned attendance records
         $stmt = $pdo->prepare("DELETE a FROM attendance a LEFT JOIN employees e ON a.employee_id = e.id WHERE e.id IS NULL");
@@ -396,7 +398,7 @@ try {
     $_SESSION['demo_mode'] = true;
 }
 
-// Load settings
+// Load runtime settings used by templates and billing calculations.
 $settings = [];
 if ($pdo) {
     try {
@@ -413,7 +415,7 @@ if ($pdo) {
     }
 }
 
-// Set default settings if not loaded from database
+// Hard defaults used when settings table is unavailable.
 if (empty($settings)) {
     $settings['company_name'] = 'Sri Ram Fire Works';
     $settings['currency_symbol'] = 'LKR';
@@ -426,7 +428,7 @@ if (isset($_GET['logout'])) {
     exit;
 }
 
-// Handle login
+// Authentication flow: DB-backed login with demo fallback credentials.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
@@ -466,13 +468,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
     }
 }
 
-// Check if logged in
+// Block template routing until session auth is established.
 if (!isset($_SESSION['user_id'])) {
     include 'templates/login.php';
     exit;
 }
 
-// Get current page
+// Resolve routed page and keep aliases/invalid values bounded.
 $page = $_GET['page'] ?? 'dashboard';
 if ($page === 'wholesale') {
     $page = 'event';
@@ -483,7 +485,7 @@ if (!in_array($page, $validPages)) {
     $page = 'dashboard';
 }
 
-// Include the appropriate template
+// Dispatch to page template.
 $templateFile = "templates/{$page}.php";
 if (file_exists($templateFile)) {
     include $templateFile;

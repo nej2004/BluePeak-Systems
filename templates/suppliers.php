@@ -309,7 +309,7 @@ if ($action === 'create' || $action === 'edit') {
                                             <tr>
                                                 <td><input type="text" name="items[]" class="form-control" value="<?= htmlspecialchars($item['item_name']) ?>" placeholder="Item name"></td>
                                                 <td><input type="number" name="quantities[]" class="form-control" min="0" step="1" value="<?= (int) $item['quantity'] ?>"></td>
-                                                <td><input type="text" name="unit_prices[]" class="form-control" pattern="^\d+(\.\d{1,2})?$" title="Enter a valid price (e.g., 30.00)" value="<?= number_format((float) $item['unit_price'], 2, '.', '') ?>" placeholder="0.00"></td>
+                                                <td><input type="text" name="unit_prices[]" class="form-control unit-price-input" inputmode="decimal" value="<?= number_format((float) $item['unit_price'], 2, '.', '') ?>" placeholder="0.00"></td>
                                                 <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSupplierItemRow(this)">Remove</button></td>
                                             </tr>
                                             <?php endforeach; ?>
@@ -317,7 +317,7 @@ if ($action === 'create' || $action === 'edit') {
                                             <tr>
                                                 <td><input type="text" name="items[]" class="form-control" placeholder="Item name"></td>
                                                 <td><input type="number" name="quantities[]" class="form-control" min="0" step="1" value="0"></td>
-                                                <td><input type="text" name="unit_prices[]" class="form-control" pattern="^\d+(\.\d{1,2})?$" title="Enter a valid price (e.g., 30.00)" value="0.00" placeholder="0.00"></td>
+                                                <td><input type="text" name="unit_prices[]" class="form-control unit-price-input" inputmode="decimal" value="0.00" placeholder="0.00"></td>
                                                 <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSupplierItemRow(this)">Remove</button></td>
                                             </tr>
                                         <?php endif; ?>
@@ -361,7 +361,7 @@ if ($action === 'create' || $action === 'edit') {
                     row.innerHTML = `
                         <td><input type="text" name="items[]" class="form-control" value="${name}" placeholder="Item name"></td>
                         <td><input type="number" name="quantities[]" class="form-control" min="0" step="1" value="${qty}"></td>
-                        <td><input type="text" name="unit_prices[]" class="form-control" pattern="^\d+(\.\d{1,2})?$" title="Enter a valid price (e.g., 30.00)" value="${price}" placeholder="0.00"></td>
+                        <td><input type="text" name="unit_prices[]" class="form-control unit-price-input" inputmode="decimal" value="${price}" placeholder="0.00"></td>
                         <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSupplierItemRow(this)">Remove</button></td>
                     `;
                     tbody.appendChild(row);
@@ -378,10 +378,28 @@ if ($action === 'create' || $action === 'edit') {
                     row.remove();
                 }
 
+                function normalizeUnitPriceInputs() {
+                    const priceInputs = document.querySelectorAll('input[name="unit_prices[]"]');
+                    priceInputs.forEach(function (input) {
+                        let raw = String(input.value || '').trim();
+                        raw = raw.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+                        const value = parseFloat(raw);
+                        input.value = Number.isFinite(value) && value >= 0 ? value.toFixed(2) : '0.00';
+                        input.setCustomValidity('');
+                    });
+                }
+
                 document.addEventListener('DOMContentLoaded', function() {
                     const tbody = document.getElementById('supplierItemsBody');
                     if (!tbody || tbody.querySelectorAll('tr').length === 0) {
                         addSupplierItemRow();
+                    }
+
+                    const form = document.querySelector('form[action*="page=suppliers&action="]');
+                    if (form) {
+                        form.addEventListener('submit', function () {
+                            normalizeUnitPriceInputs();
+                        });
                     }
                 });
             </script>

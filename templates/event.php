@@ -2,6 +2,7 @@
 $action = $_GET['action'] ?? 'index';
 $currency = $settings['currency_symbol'] ?? 'LKR';
 
+// Normalize long bill numbers (e.g. SRF-E-000123 -> E-123) for compact table output.
 $formatEventBillNo = function ($billNumber) {
     if (preg_match('/-E-(\d+)$/', $billNumber, $matches)) {
         $num = ltrim($matches[1], '0');
@@ -13,6 +14,7 @@ $formatEventBillNo = function ($billNumber) {
     return $billNumber;
 };
 
+// Parse event date stored inside notes and normalize to Y-m-d for filtering/comparison.
 $extractEventDateFromNotes = function ($notes) {
     if (!is_string($notes) || $notes === '') {
         return null;
@@ -42,6 +44,7 @@ $extractEventDateFromNotes = function ($notes) {
     return null;
 };
 
+// Extract structured customer/event fields from the notes blob.
 $extractCustomerNameFromNotes = function ($notes) {
     if (!is_string($notes) || $notes === '') {
         return '';
@@ -72,6 +75,7 @@ $extractEventAddressFromNotes = function ($notes) {
     return '';
 };
 
+// Centralized event bill filtering used by list view and report export.
 $getFilteredEventBills = function (array $params) use ($pdo, $extractEventDateFromNotes, $extractCustomerNameFromNotes, $extractCustomerPhoneFromNotes, $extractEventAddressFromNotes) {
     $allowedPaymentFilters = ['all', 'pending', 'partial', 'paid'];
     $allowedEventFilters = ['all', 'upcoming', 'today', 'past', 'no_date'];
@@ -122,6 +126,7 @@ $getFilteredEventBills = function (array $params) use ($pdo, $extractEventDateFr
         $eventDateTo = '';
     }
 
+    // Pull a bounded result set, then apply richer in-PHP filters (notes-derived fields, ranges, report presets).
     $rows = $pdo->query("SELECT b.* FROM bills b WHERE b.type = 'wholesale' ORDER BY b.created_at DESC LIMIT 1000")->fetchAll();
     $today = date('Y-m-d');
     $filtered = [];
@@ -243,6 +248,7 @@ $getFilteredEventBills = function (array $params) use ($pdo, $extractEventDateFr
 };
 
 if ($action === 'download') {
+    // Build a lightweight PDF manually to avoid external PDF dependencies.
     $filterData = $getFilteredEventBills($_GET);
     $billsForExport = $filterData['bills'];
 
@@ -320,6 +326,7 @@ if ($action === 'download') {
         ['key' => 'status', 'label' => 'Status', 'width' => 56, 'align' => 'L'],
     ];
 
+    // PDF helpers for left/right aligned text rendering in summary/table blocks.
     $drawText = function ($x, $y, $text, $fontSize, $bold, $tableMode = false) use ($pdfEscape) {
         if ($tableMode) {
             $font = $bold ? '/F6' : '/F5';
@@ -432,6 +439,7 @@ if ($action === 'download') {
 
     $objects[2] = '<< /Type /Pages /Kids [' . implode(' ', $pageRefs) . '] /Count ' . count($pageRefs) . ' >>';
 
+    // Serialize PDF objects, then write xref/trailer.
     ksort($objects);
     $maxObj = max(array_keys($objects));
 
@@ -469,6 +477,7 @@ if ($action === 'download') {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'clear_before') {
+        // Bulk-delete old event bills and related items before a selected date.
         $clearBeforeDate = trim($_POST['clear_before_date'] ?? '');
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $clearBeforeDate)) {
             header('Location: ?page=event&clear_error=1');
@@ -504,6 +513,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
     } elseif ($action === 'store') {
+        // Create a new event bill from form rows and embedded event/customer metadata in notes.
         $items = $_POST['items'] ?? [];
         $customer_name = trim($_POST['customer_name'] ?? '');
         $customer_phone = trim($_POST['customer_phone'] ?? '');
@@ -603,6 +613,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     } elseif ($action === 'update') {
+        // Replace bill items and recalculate totals for an existing event bill.
         $id = intval($_GET['id'] ?? 0);
         $items = $_POST['items'] ?? [];
         $customer_name = trim($_POST['customer_name'] ?? '');
@@ -712,6 +723,7 @@ include 'header.php';
 
 <?php if ($action === 'index'): ?>
 <?php
+// Resolve filters/state for listing, summary cards, and calendar widgets.
 $filterData = $getFilteredEventBills($_GET);
 $bills = $filterData['bills'];
 $filters = $filterData['filters'];
@@ -743,6 +755,7 @@ if ($period === 'today') {
 
 $eventCalendarEventsByDate = [];
 $eventCalendarEventIdByDate = [];
+// Build date-indexed maps for the event calendar display.
 foreach ($calendarSourceBills as $bill) {
     $eventDate = trim((string)($bill['event_date'] ?? ''));
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $eventDate)) {
@@ -1312,6 +1325,7 @@ $nextEventJson = json_encode($nextEvent, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX
     </div>
     <script>
                 (function () {
+                    // Calendar widget: render monthly event density and navigate to event details.
                     var widget = document.getElementById('eventCalendarWidget');
                     if (!widget) {
                         return;
@@ -1334,6 +1348,7 @@ $nextEventJson = json_encode($nextEvent, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX
                         return String(value).padStart(2, '0');
                     };
 
+                    // Live countdown for the nearest upcoming event.
                     var renderCountdown = function () {
                         if (!nextEvent || !countdownElement) {
                             return;
@@ -1373,6 +1388,7 @@ $nextEventJson = json_encode($nextEvent, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX
                         setInterval(update, 1000);
                     };
 
+                    // Build the calendar grid for the current month in view.
                     var render = function () {
                         var year = activeDate.getFullYear();
                         var month = activeDate.getMonth();
@@ -1419,6 +1435,7 @@ $nextEventJson = json_encode($nextEvent, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX
                         meta.textContent = monthTotalEvents + ' event(s) in this month';
                     };
 
+                    // Delegate clicks for day navigation and month controls.
                     widget.addEventListener('click', function (event) {
                         var eventDay = event.target.closest('.event-calendar-day[data-event-id]');
                         if (eventDay) {
@@ -1640,6 +1657,7 @@ if ($isEdit) {
 </form>
 
 <script>
+// Event bill editor state and pricing inputs used for realtime totals.
 const currency = '<?= $currency ?>';
 const taxRate = <?= $settings['tax_percentage'] ?? 0 ?>;
 let items = [];
@@ -1657,6 +1675,7 @@ const productOptions = Array.from(productSelect.querySelectorAll('option[data-id
     label: option.textContent.trim()
 }));
 
+// Filter product dropdown by selected category.
 categorySelect.addEventListener('change', function () {
     const categoryId = this.value;
     productSelect.innerHTML = '';
@@ -1684,6 +1703,7 @@ categorySelect.addEventListener('change', function () {
         });
 });
 
+// Add selected product into the bill item table.
 productSelect.addEventListener('change', function() {
     if (this.value) {
         const opt = this.selectedOptions[0];
@@ -1693,6 +1713,7 @@ productSelect.addEventListener('change', function() {
 });
 
 function addItem(product) {
+    // Merge duplicates by increasing quantity instead of creating duplicate rows.
     const existing = items.findIndex(i => i.product_id == product.id);
     if (existing >= 0) {
         const row = document.querySelector(`tr[data-index="${items[existing].index}"]`);
@@ -1737,12 +1758,14 @@ if (Array.isArray(initialItems) && initialItems.length > 0) {
     });
 }
 
+// Delegate row input updates (qty, price, line discount).
 document.getElementById('itemsBody').addEventListener('input', function(e) {
     if (e.target.classList.contains('qty-input') || e.target.classList.contains('price-input') || e.target.classList.contains('discount-input')) {
         updateRowTotal(parseInt(e.target.dataset.index, 10));
     }
 });
 
+// Delegate remove actions for dynamic rows.
 document.getElementById('itemsBody').addEventListener('click', function(e) {
     if (e.target.closest('.remove-item')) {
         const index = parseInt(e.target.closest('.remove-item').dataset.index, 10);
@@ -1754,6 +1777,7 @@ document.getElementById('itemsBody').addEventListener('click', function(e) {
 });
 
 function updateRowTotal(index) {
+    // Keep line values normalized and sync changes back to in-memory items array.
     const row = document.querySelector(`tr[data-index="${index}"]`);
     const qty = parseInt(row.querySelector('.qty-input').value, 10) || 0;
     const price = parseFloat(row.querySelector('.price-input').value) || 0;
@@ -1773,6 +1797,7 @@ function updateRowTotal(index) {
 }
 
 function updateTotals() {
+    // Recalculate subtotal, discount, tax, grand total, and remaining balance.
     let subtotal = 0;
     items.forEach(item => {
         const unitDiscount = Math.min(Math.max(item.discount || 0, 0), item.price || 0);
@@ -1804,6 +1829,7 @@ function updateTotals() {
 
 document.getElementById('discountPercent').addEventListener('input', updateTotals);
 document.getElementById('paidAmount').addEventListener('input', updateTotals);
+// Shortcut to mark current grand total as fully paid.
 document.getElementById('payFullBtn').addEventListener('click', function() {
     let subtotal = 0;
     items.forEach(item => {
