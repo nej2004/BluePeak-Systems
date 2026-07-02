@@ -87,9 +87,7 @@ The app creates the database and required tables on first successful connection 
 - `SETUP.md` contains the full installation and troubleshooting guide.
 - `.vscode/settings.json` contains the SQLTools connection configuration for local development.
 
-## Screenshots
 
-You can add screenshots here if you want to showcase the dashboard, billing screens, and reports.
 
 ## License
 
