@@ -18,6 +18,21 @@ This project is built for day-to-day business operations in a fireworks retail e
 - PDF reports for dashboard, sales, and business summaries
 - Demo mode fallback when the database is unavailable
 
+## Screenshots
+<img width="1919" height="932" alt="image" src="https://github.com/user-attachments/assets/2aa3a6b6-fa9f-453c-afd8-3c8a53cad27d" />
+<img width="1919" height="928" alt="image" src="https://github.com/user-attachments/assets/26b7657b-60f7-473b-9bb6-908a3ab0a42a" />
+<img width="1919" height="927" alt="image" src="https://github.com/user-attachments/assets/48c71fd4-4ab6-49d5-a13b-49bc09ecc638" />
+<img width="1919" height="927" alt="image" src="https://github.com/user-attachments/assets/3bb305ba-c934-43a7-ab92-e08a21ca794a" />
+<img width="1916" height="1013" alt="image" src="https://github.com/user-attachments/assets/8d79980c-65ba-49ab-b3e9-5c28aba8a3ba" />
+<img width="1919" height="932" alt="image" src="https://github.com/user-attachments/assets/90ebf525-cc14-4714-9424-eda3834311b7" />
+<img width="1919" height="929" alt="image" src="https://github.com/user-attachments/assets/61631678-d757-4832-853a-f476239d32e8" />
+<img width="1919" height="927" alt="image" src="https://github.com/user-attachments/assets/c185e5ce-8b99-47a7-85e2-d9192fce8d41" />
+
+
+
+
+
+
 ## Tech Stack
 
 - PHP 7.4+
